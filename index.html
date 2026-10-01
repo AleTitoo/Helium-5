@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f9ff">
+  <meta name="description" content="Download the Helium-5 assignment board for Windows.">
+  <title>Helium-5 for Windows</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='24' fill='none' stroke='%232d8fd7' stroke-width='2'/%3E%3Ccircle cx='8' cy='32' r='3' fill='%232d8fd7'/%3E%3Ccircle cx='56' cy='32' r='3' fill='%232d8fd7'/%3E%3Ccircle cx='27' cy='27' r='4' fill='%232d8fd7'/%3E%3Ccircle cx='36' cy='27' r='4' fill='%2370bef0'/%3E%3Ccircle cx='23' cy='37' r='4' fill='%2370bef0'/%3E%3Ccircle cx='32' cy='39' r='4' fill='%232d8fd7'/%3E%3Ccircle cx='42' cy='37' r='4' fill='%2370bef0'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:light;--ink:#203149;--muted:#627991;--blue:#4388c7;--line:#d6e7f7;--pale:#f4f9ff}
+    *{box-sizing:border-box}
+    body{min-height:100vh;margin:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 44%,#edf6ff 0,#fff 65%);color:var(--ink);font:16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px}
+    main{width:min(100%,540px);text-align:center;padding:42px 34px 34px;border:1px solid var(--line);border-radius:24px;background:#ffffffed;box-shadow:0 14px 48px #397fb018,0 0 0 1px #c8e1f433}
+    .atom-animation{display:block;width:132px;height:132px;margin:0 auto 10px}
+    h1{font-size:clamp(30px,7vw,40px);line-height:1.15;letter-spacing:-.04em;margin:0}
+    p{margin:12px 0 24px;color:var(--muted)}
+    .download{display:inline-flex;min-height:52px;align-items:center;justify-content:center;padding:0 24px;border-radius:12px;background:var(--blue);color:white;text-decoration:none;font-weight:700;box-shadow:0 5px 15px #4388c744;transition:transform .16s,background .16s,box-shadow .16s}
+    .download:hover{background:#3478b6;transform:translateY(-1px);box-shadow:0 8px 19px #4388c755}
+    .download:focus-visible{outline:3px solid #84b9eb;outline-offset:3px}
+    .version{margin:12px 0 0;font-size:13px;color:#7890a8}
+    .note{margin:28px 0 0;padding:14px 16px;border:1px solid #e1ebf5;border-radius:12px;background:#f8fbff;text-align:left;font-size:14px;color:#536c83}
+    .note strong{color:#344e68}
+    @media(max-width:480px){main{padding:34px 22px 24px}.download{width:100%}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <main>
+    <canvas class="atom-animation" id="atom-animation" width="320" height="320" role="img" aria-label="Animated Helium-5 atom"></canvas>
+    <noscript><img class="atom-animation" src="Helium-5-electron-orbit-preview.gif" alt="Animated Helium-5 atom"></noscript>
+    <h1>Helium-5</h1>
+    <p>A focused assignment board for Windows.</p>
+    <a class="download" href="https://github.com/AleTitoo/Helium-5/releases/download/v1.0.2/Helium-5-Setup-1.0.2.exe" download>Download for Windows</a>
+    <div class="version">Version 1.0.2 · Windows 10 and 11</div>
+    <div class="note"><strong>Installing:</strong> Run the downloaded installer. If Windows shows an “Unknown publisher” message, choose <strong>More info → Run anyway</strong>.</div>
+  </main>
+  <script>
+    (() => {
+      const canvas = document.getElementById('atom-animation');
+      const ctx = canvas.getContext('2d');
+      const center = 160;
+      const orbitRadius = 94;
+      const cycleMs = 8000;
+      const frameInterval = 1000 / 60;
+      const blue = [45, 143, 215];
+      const green = [61, 214, 132];
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const slowEvents = [
+        [0.00, 0.10, 1, 0.90],
+        [0.23, 2.35, -1, 1.18],
+        [0.69, 5.15, 1, 0.76]
+      ];
+      const fastEvents = [
+        [0.00, Math.PI, -1, 1.55],
+        [0.38, 0.72, 1, 1.08],
+        [0.82, 4.40, -1, 1.42]
+      ];
+
+      function electronMotion(progress, events) {
+        let event = events[0];
+        let scale = 1;
+        for (const candidate of events) {
+          const distance = Math.min(
+            Math.abs(progress - candidate[0]),
+            1 - Math.abs(progress - candidate[0])
+          );
+          scale = Math.min(scale, distance / 0.045);
+          if (candidate[0] <= progress) event = candidate;
+        }
+        const local = (progress - event[0] + 1) % 1;
+        const phase = Math.PI * 2 * event[3] * local;
+        const easedPhase = phase - 0.48 * Math.sin(phase);
+        return {
+          angle: event[1] + event[2] * easedPhase,
+          scale: Math.max(0, Math.min(1, scale))
+        };
+      }
+
+      function drawCircle(x, y, radius, fill, glow = 0, glowColor = fill) {
+        ctx.save();
+        ctx.fillStyle = fill;
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function draw(time) {
+        ctx.clearRect(0, 0, 320, 320);
+        ctx.save();
+        ctx.strokeStyle = '#2d8fd7';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(45,143,215,.52)';
+        ctx.shadowBlur = 7;
+        ctx.beginPath();
+        ctx.arc(center, center, orbitRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        const nuclei = [
+          [-18, -16, '#2d8fd7'], [13, -16, '#70bef0'],
+          [-32, 15, '#70bef0'], [0, 18, '#2d8fd7'], [33, 15, '#70bef0']
+        ];
+        for (const [x, y, color] of nuclei) drawCircle(center + x, center + y, 12, color, 4, color);
+
+        const progress = reducedMotion ? 0.125 : (time % cycleMs) / cycleMs;
+        const electrons = [electronMotion(progress, slowEvents), electronMotion(progress, fastEvents)];
+        const separation = Math.abs(Math.atan2(
+          Math.sin(electrons[0].angle - electrons[1].angle),
+          Math.cos(electrons[0].angle - electrons[1].angle)
+        ));
+        const flash = Math.exp(-Math.pow(separation / 0.20, 2)) * Math.min(electrons[0].scale, electrons[1].scale);
+        const color = blue.map((value, index) => Math.round(value + (green[index] - value) * flash));
+        const fill = `rgb(${color.join(',')})`;
+        const glow = `rgba(${color.join(',')},${0.5 + flash * 0.4})`;
+
+        for (const electron of electrons) {
+          if (electron.scale <= 0.01) continue;
+          const x = center + orbitRadius * Math.cos(electron.angle);
+          const y = center + orbitRadius * Math.sin(electron.angle);
+          drawCircle(x, y, 13 * electron.scale, fill, 18 + 10 * flash, glow);
+        }
+      }
+
+      if (reducedMotion) {
+        draw(1000);
+        return;
+      }
+
+      let previous = performance.now() - frameInterval;
+      function animate(now) {
+        const elapsed = now - previous;
+        if (elapsed >= frameInterval) {
+          previous = now - (elapsed % frameInterval);
+          draw(now);
+        }
+        requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
+
