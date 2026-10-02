@@ -1,0 +1,59 @@
+{
+  "name": "helium-5",
+  "version": "1.0.6",
+  "description": "A private desktop assignment board for Windows",
+  "main": "src/main.js",
+  "author": "Helium-5",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AleTitoo/Helium-5.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "make-icon": "node scripts/make-icon.js",
+    "dist": "npm run make-icon && electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest"
+  },
+  "build": {
+    "appId": "com.helium5.assignmentboard",
+    "productName": "Helium-5",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "AleTitoo",
+      "repo": "Helium-5",
+      "releaseType": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/helium-5.ico",
+      "artifactName": "Helium-5-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Helium-5"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}
