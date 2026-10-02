@@ -1,6 +1,6 @@
 {
   "name": "helium-5",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A private desktop assignment board for Windows",
   "main": "src/main.js",
   "author": "Helium-5",
