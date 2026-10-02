@@ -9,6 +9,8 @@ let mainWindow = null;
 let updaterConfigured = false;
 let updateCheckInFlight = false;
 let updateCheckRequestedByUser = false;
+let availableUpdateInfo = null;
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 app.setName('Helium-5');
 app.setAppUserModelId(APP_ID);
@@ -133,16 +135,48 @@ function createMenu() {
       { role: 'reload' }, { role: 'togglefullscreen' }
     ]},
     { label: 'Help', submenu: [
-      { label: 'Check for Updates…', click: () => checkForUpdates(true) },
+      { label: availableUpdateInfo ? `Download Update ${availableUpdateInfo.version || ''}…` : 'Check for Updates…', click: () => checkForUpdates(true) },
       { type: 'separator' },
       { label: 'Open Data Folder', click: () => shell.openPath(app.getPath('userData')) }
     ]}
   ]);
 }
 
+function publishUpdateState(info = null) {
+  availableUpdateInfo = info;
+  Menu.setApplicationMenu(createMenu());
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:state', {
+      available: Boolean(info),
+      version: info?.version || null
+    });
+  }
+}
+
 function showUpdateMessage(options) {
   if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve({ response: -1 });
   return dialog.showMessageBox(mainWindow, options);
+}
+
+async function promptUpdateDownload(info) {
+  const version = info?.version ? ` ${info.version}` : '';
+  const result = await showUpdateMessage({
+    type: 'info',
+    title: 'Helium-5 update available',
+    message: `Helium-5${version} is ready to download.`,
+    detail: 'Your assignments and settings will stay on this computer.',
+    buttons: ['Download update', 'Later'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true
+  });
+  if (result.response !== 0) return;
+  updateCheckRequestedByUser = true;
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (error) {
+    console.error('Update download failed:', error);
+  }
 }
 
 function configureUpdater() {
@@ -154,28 +188,16 @@ function configureUpdater() {
 
   autoUpdater.on('update-available', async info => {
     updateCheckInFlight = false;
-    const version = info?.version ? ` ${info.version}` : '';
-    const result = await showUpdateMessage({
-      type: 'info',
-      title: 'Helium-5 update available',
-      message: `Helium-5${version} is ready to download.`,
-      detail: 'Your assignments and settings will stay on this computer.',
-      buttons: ['Download update', 'Later'],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true
-    });
-    if (result.response !== 0) return;
-    updateCheckRequestedByUser = true;
-    try {
-      await autoUpdater.downloadUpdate();
-    } catch (error) {
-      console.error('Update download failed:', error);
-    }
+    const requestedByUser = updateCheckRequestedByUser;
+    updateCheckRequestedByUser = false;
+    publishUpdateState(info);
+    if (!requestedByUser) return;
+    await promptUpdateDownload(info);
   });
 
   autoUpdater.on('update-not-available', () => {
     updateCheckInFlight = false;
+    publishUpdateState(null);
     if (!updateCheckRequestedByUser) return;
     updateCheckRequestedByUser = false;
     showUpdateMessage({
@@ -243,6 +265,10 @@ async function checkForUpdates(requestedByUser = false) {
     return;
   }
   configureUpdater();
+  if (requestedByUser && availableUpdateInfo) {
+    await promptUpdateDownload(availableUpdateInfo);
+    return;
+  }
   if (updateCheckInFlight) return;
   updateCheckRequestedByUser = requestedByUser;
   updateCheckInFlight = true;
@@ -284,6 +310,8 @@ ipcMain.on('store:save', (_event, data) => {
 ipcMain.handle('data:export', exportData);
 ipcMain.handle('data:import', importData);
 ipcMain.handle('calendar:fetch', fetchCalendar);
+ipcMain.handle('update:check', () => checkForUpdates(true));
+ipcMain.handle('update:state', () => ({ available: Boolean(availableUpdateInfo), version: availableUpdateInfo?.version || null }));
 
 app.on('second-instance', () => {
   if (!mainWindow) return;
@@ -297,6 +325,7 @@ app.whenReady().then(() => {
   createWindow();
   configureUpdater();
   setTimeout(() => checkForUpdates(false), 5000);
+  setInterval(() => checkForUpdates(false), UPDATE_CHECK_INTERVAL_MS);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
