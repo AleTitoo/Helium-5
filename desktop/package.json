@@ -1,6 +1,6 @@
 {
   "name": "helium-5",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A private desktop assignment board for Windows",
   "main": "src/main.js",
   "author": "Helium-5",
@@ -45,11 +45,11 @@
       "artifactName": "Helium-5-Setup-${version}.${ext}"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
       "shortcutName": "Helium-5"
     }
   },
