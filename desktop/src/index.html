@@ -69,10 +69,7 @@
 .calendar-link-form label{display:grid;gap:5px;color:#566c83;font-size:11px;font-weight:650}
 .calendar-link-form input{height:38px;min-width:0;width:100%;padding:8px 10px;border:1px solid #d5e2ef;border-radius:8px;background:white;color:var(--ink);font:13px Inter,ui-sans-serif,system-ui,sans-serif}
 .calendar-link-form button{height:38px;white-space:nowrap}
-.transfer-panel{max-width:920px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 16px;border:1px solid #b8d5ee;border-radius:12px;background:#f2f8ff;color:#4b6e90;font-size:12px}
-.transfer-panel[hidden]{display:none}.transfer-panel button{flex:none}
 @media(max-width:700px){.calendar-link-form{grid-template-columns:1fr}.calendar-link-form button{justify-self:start}}
-@media(max-width:700px){.transfer-panel{display:grid}.transfer-panel button{justify-self:start}}
 @media(max-width:700px){.top{align-items:flex-start;gap:12px}.top-right{gap:7px;flex-wrap:wrap;justify-content:flex-end}.nav-link{font-size:11px;padding:7px 8px}}
 @media(max-width:850px){.upcoming{grid-template-columns:1fr}}
 @media(min-width:851px) and (max-width:1100px){.upcoming{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -106,7 +103,6 @@
 </main><main class="shell page-hidden" id="calendars-page">
 <header class="top"><div class="brand"><button class="atom-home" type="button" aria-label="Back to assignment board"><span class="mark atom" role="img" aria-label="Helium-5 atom"></span></button><span>Helium-5</span></div><div class="top-right"><a class="nav-link" href="#recurring">Recurring assignments</a><a class="nav-link" href="#board">← Back to board</a></div></header>
 <section class="recurring-intro"><h1 class="editable-heading"><span class="title-wrap"><span class="editable-label" data-edit-key="calendars-title" title="Click to rename">Calendars</span></span></h1><p class="sub current-datetime"></p></section>
-<div class="transfer-panel" id="transfer-panel" hidden><span>Your saved bubbles and notes are in this older file view. Move them to the synced board to manage calendars.</span><button class="primary-button" id="transfer-board" type="button">Open synced board with my data</button></div>
 <section class="calendar-panel"><h2>Connected calendars</h2><p class="muted">Drop in a D2L or other .ics file, or paste a subscription link for automatic updates.</p><label class="calendar-drop" id="calendar-drop" tabindex="0"><strong>Drop an .ics calendar here</strong><span>or click to choose a file</span><input class="calendar-file-input" id="calendar-file" type="file" accept=".ics,text/calendar"></label><form class="calendar-link-form" id="calendar-link-form"><label>CALENDAR NAME<input name="name" placeholder="e.g. Personal calendar" maxlength="60"></label><label>SUBSCRIPTION LINK<input name="url" type="url" required placeholder="https://…/calendar.ics"></label><button class="primary-button" type="submit">Add link</button></form><p class="calendar-message" id="calendar-message" aria-live="polite"></p><div class="calendar-list" id="calendar-list"></div></section><p class="page-footnote">Links refresh every 15 minutes. Drop the same file again to update an imported calendar.</p>
 </main><dialog id="data-dialog" class="data-dialog"><div class="data-shell"><div class="history-head"><div><h2>Your Helium-5 data</h2><p>Assignments are saved automatically on this computer.</p></div><button id="data-close" class="history-close" type="button" aria-label="Close data window">×</button></div><div class="data-options"><section class="data-option"><h3>Back up</h3><p>Save a portable copy of assignments, notes, colors, recurring rules, Archive, and Trash.</p><button id="data-export" class="primary-button" type="button">Save backup</button></section><section class="data-option"><h3>Restore or transfer</h3><p>Load a Helium-5 backup or the transfer file exported from the browser board.</p><button id="data-import" class="primary-button" type="button">Choose file</button></section></div><p id="data-status" class="data-status" aria-live="polite"></p></div></dialog><dialog id="history-dialog" class="history-dialog"><div class="history-shell"><div class="history-head"><div><h2>Assignment archive</h2><p>Completed work and assignments that left the board. Entries move to Trash 72 hours after their due time.</p></div><button id="history-close" class="history-close" type="button" aria-label="Close archive">×</button></div><div class="history-stats"><div class="history-stat"><strong id="stat-ontime">0</strong><span>On time</span></div><div class="history-stat"><strong id="stat-overdue">0</strong><span>Overdue submission</span></div><div class="history-stat"><strong id="stat-missed">0</strong><span>Never submitted</span></div></div><div class="history-tabs"><button class="history-tab" type="button" data-history-tab="archive" aria-selected="true">Archive (0)</button><button class="history-tab" type="button" data-history-tab="trash" aria-selected="false">Trash (0)</button></div><div id="history-list" class="history-list"></div><p class="history-unknown" id="history-unknown" hidden>Older checked assignments have no recorded completion time and are excluded from timing statistics.</p></div></dialog><dialog id="add-dialog" class="add-dialog"><form id="add-form" class="add-form">
 <div class="add-form-heading"><div><h2>Add an assignment</h2><p>The new bubble will be sorted by its deadline.</p></div><button id="bubble-color-button" class="bubble-color-trigger" type="button" aria-label="Change bubble color" title="Change bubble color"></button></div>
@@ -515,46 +511,6 @@
    syncCalendarFeeds();drawCalendarList();
    if(desktop)refreshDesktopCalendars();
    setInterval(()=>{reloadCalendars().catch(()=>{})},desktop?15*60000:60000);
-   const transferPanel=document.getElementById('transfer-panel');
-   if(location.protocol==='file:'){
-    transferPanel.hidden=false;
-    document.getElementById('transfer-board').addEventListener('click',()=>{
-     const data={};for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index);if(key?.startsWith('assignment-'))data[key]=localStorage.getItem(key)}
-     let target=null,finished=false;
-     const listener=event=>{
-      if(event.origin!=='http://127.0.0.1:43128'||event.source!==target)return;
-      if(event.data?.type==='assignment-board-ready')target.postMessage({type:'assignment-board-transfer',data},'http://127.0.0.1:43128');
-      if(event.data?.type==='assignment-board-transfer-complete'){finished=true;calendarMessage.textContent='Your saved board is in the new synced tab.';window.removeEventListener('message',listener)}
-     };
-     window.addEventListener('message',listener);
-     target=window.open('http://127.0.0.1:43128/?receive-board=1','_blank');
-     if(!target){window.removeEventListener('message',listener);calendarMessage.textContent='Allow the synced board tab to open, then try again.';return}
-     setTimeout(()=>{if(!finished){window.removeEventListener('message',listener);calendarMessage.textContent='Open the synced board from the setup shortcut, then try again.'}},12000);
-    });
-   }
-   if(location.hostname==='127.0.0.1'&&new URLSearchParams(location.search).has('receive-board')&&window.opener){
-    const sender=window.opener;
-    const receiveTransfer=event=>{
-     if(event.source!==sender||event.data?.type!=='assignment-board-transfer'||!event.data.data)return;
-     window.removeEventListener('message',receiveTransfer);
-     clearInterval(readyPing);
-     for(const [key,value] of Object.entries(event.data.data)){
-      if(!key.startsWith('assignment-')||typeof value!=='string'||value.length>2000000)continue;
-      try{
-       const incoming=JSON.parse(value),current=JSON.parse(localStorage.getItem(key)||'null');let merged=incoming;
-       if(Array.isArray(incoming)&&Array.isArray(current)){const byId=new Map();for(const item of [...current,...incoming])byId.set(item&&typeof item==='object'&&item.id?item.id:JSON.stringify(item),item);merged=[...byId.values()]}
-       else if(incoming&&current&&typeof incoming==='object'&&typeof current==='object'&&!Array.isArray(incoming)&&!Array.isArray(current))merged={...current,...incoming};
-       localStorage.setItem(key,JSON.stringify(merged));
-      }catch{}
-     }
-     sender.postMessage({type:'assignment-board-transfer-complete'},'*');
-     location.replace('http://127.0.0.1:43128/#board');
-    };
-    window.addEventListener('message',receiveTransfer);
-    const readyPing=setInterval(()=>sender.postMessage({type:'assignment-board-ready'},'*'),500);
-    sender.postMessage({type:'assignment-board-ready'},'*');
-    setTimeout(()=>clearInterval(readyPing),12000);
-   }
    const dataDialog=document.getElementById('data-dialog'),dataStatus=document.getElementById('data-status');
    function openDataDialog(){dataStatus.textContent='';dataDialog.showModal()}
    for(const button of document.querySelectorAll('.data-button'))button.addEventListener('click',openDataDialog);
